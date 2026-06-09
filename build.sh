@@ -2,42 +2,59 @@
 set -e
 
 PROJECT_DIR="."
-ZEROTIER_VERSION="1.16.2"
+DEFAULT_ZEROTIER_VERSION="1.16.2"
+ZEROTIER_VERSION="${DEFAULT_ZEROTIER_VERSION}"
 
 QDK_URL="https://github.com/qnap-dev/QDK/releases/download/v2.5.0/qdk_2.5.0_amd64.deb"
-ZT_SRC_URL="https://github.com/zerotier/ZeroTierOne/archive/refs/heads/${ZEROTIER_VERSION}.zip"
 
 # 控制标志
 DOWNLOAD=false
 CONFIG=false
 BUILD=false
+SHOW_VERSION=false
 
 # 显示用法
 usage() {
     cat << EOF
 ZeroTier QPKG 构建脚本 v1.0
 
-用法: $0 [选项]
+用法: $0 [选项] [版本号]
 
 选项:
   -d, --download     仅下载资源文件
   -c, --config       仅生成配置文件
   -b, --build        仅执行构建（需已下载资源并生成配置）
   -h, --help         显示此帮助信息
+  -v, --version      显示版本信息
+
+参数:
+  版本号             要构建的 ZeroTier 版本（可选，默认: ${DEFAULT_ZEROTIER_VERSION}）
 
 说明:
   - 如果不带任何参数，执行完整流程（下载+配置+构建）
   - 支持组合参数，如: -dc 或 -dcb
   - 支持单个参数，如: -d -c 或 -d -c -b
   - 参数顺序不影响执行顺序，脚本会自动按正确顺序执行
+  - 版本号参数应放在最后
 
 示例:
-  $0                     # 完整流程
-  $0 -dc                 # 下载资源并生成配置
-  $0 -d                  # 仅下载资源
-  $0 -c                  # 仅生成配置
-  $0 -b                  # 仅执行构建
-  $0 -dcb                # 完整流程（与不带参数相同）
+  $0                     # 完整流程，使用默认版本 ${DEFAULT_ZEROTIER_VERSION}
+  $0 1.16.4              # 完整流程，构建 1.16.4 版本
+  $0 -dc 1.16.4          # 下载资源并生成配置，使用 1.16.4 版本
+  $0 -d                  # 仅下载资源，使用默认版本
+  $0 -c 1.15.0           # 仅生成配置，使用 1.15.0 版本
+  $0 -b                  # 仅执行构建，使用默认版本
+  $0 -dcb 1.16.2         # 完整流程，指定 1.16.2 版本
+EOF
+    exit 0
+}
+
+# 显示版本信息
+show_version() {
+    cat << EOF
+ZeroTier QPKG 构建脚本
+默认构建版本: ${DEFAULT_ZEROTIER_VERSION}
+当前目标版本: ${ZEROTIER_VERSION}
 EOF
     exit 0
 }
@@ -53,8 +70,8 @@ parse_args() {
     fi
 
     # 定义短选项和长选项
-    local SHORT_OPTS="dcbh"
-    local LONG_OPTS="download,config,build,help"
+    local SHORT_OPTS="dcbhv"
+    local LONG_OPTS="download,config,build,help,version"
 
     # 解析参数
     local TEMP
@@ -86,6 +103,10 @@ parse_args() {
             -h|--help)
                 usage
                 ;;
+            -v|--version)
+                SHOW_VERSION=true
+                shift
+                ;;
             --)
                 shift
                 break
@@ -97,10 +118,22 @@ parse_args() {
         esac
     done
 
-    # 检查是否有额外的未知参数
+    # 处理版本号参数（最后一个非选项参数）
     if [ $# -gt 0 ]; then
-        echo "错误: 未知参数 '$*'"
-        usage
+        # 检查是否还有额外的未知参数
+        if [ $# -eq 1 ]; then
+            # 假设最后一个参数是版本号
+            ZEROTIER_VERSION="$1"
+            echo "==> 使用指定版本: ${ZEROTIER_VERSION}"
+        else
+            echo "错误: 未知参数 '$*'"
+            usage
+        fi
+    fi
+
+    # 如果指定了--version，显示版本信息
+    if [ "$SHOW_VERSION" = true ]; then
+        show_version
     fi
 
     # 如果没有指定任何操作，默认执行完整流程
@@ -127,7 +160,8 @@ download_resources() {
     fi
 
     echo "==> 下载 ZeroTier One ${ZEROTIER_VERSION} 源码..."
-    if ! curl -L -o /tmp/zt.zip ${ZT_SRC_URL}; then
+    local ZT_SRC_URL="https://github.com/zerotier/ZeroTierOne/archive/refs/heads/${ZEROTIER_VERSION}.zip"
+    if ! curl -L -o /tmp/zt.zip "${ZT_SRC_URL}"; then
         echo "ERROR: 下载 ZeroTier 源码失败，请检查网络连接或 URL 有效性。"
         exit 1
     fi
@@ -326,7 +360,7 @@ main() {
 
     # 显示执行的步骤
     echo "=== ZeroTier QPKG 构建脚本 ==="
-    echo "版本: ${ZEROTIER_VERSION}"
+    echo "目标版本: ${ZEROTIER_VERSION}"
     echo "步骤:"
     echo "  - 下载资源: $([ "$DOWNLOAD" = true ] && echo "是" || echo "否")"
     echo "  - 生成配置: $([ "$CONFIG" = true ] && echo "是" || echo "否")"
