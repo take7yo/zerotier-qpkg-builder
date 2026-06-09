@@ -59,6 +59,16 @@ EOF
     exit 0
 }
 
+# 验证版本号格式
+validate_version() {
+    local version="$1"
+    # 检查是否为 x.x.x 格式
+    if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "错误: 无效的版本号格式 '${version}'，请使用 x.x.x 格式（如 1.16.2）"
+        exit 1
+    fi
+}
+
 # 使用 getopt 解析参数
 parse_args() {
     # 如果没有参数，则执行完整流程
@@ -75,7 +85,7 @@ parse_args() {
 
     # 解析参数
     local TEMP
-    TEMP=$(getopt -o "$SHORT_OPTS" --long "$LONG_OPTS" -n "$0" -- "$@")
+    TEMP=$(getopt -o "${SHORT_OPTS}" --long "${LONG_OPTS}" -n "$0" -- "$@")
 
     if [ $? != 0 ]; then
         echo "错误: 参数解析失败"
@@ -83,7 +93,7 @@ parse_args() {
     fi
 
     # 重新设置参数
-    eval set -- "$TEMP"
+    eval set -- "${TEMP}"
 
     # 处理参数
     while true; do
@@ -124,6 +134,8 @@ parse_args() {
         if [ $# -eq 1 ]; then
             # 假设最后一个参数是版本号
             ZEROTIER_VERSION="$1"
+            # 验证版本号格式
+            validate_version "${ZEROTIER_VERSION}"
             echo "==> 使用指定版本: ${ZEROTIER_VERSION}"
         else
             echo "错误: 未知参数 '$*'"
@@ -132,12 +144,12 @@ parse_args() {
     fi
 
     # 如果指定了--version，显示版本信息
-    if [ "$SHOW_VERSION" = true ]; then
+    if [ "${SHOW_VERSION}" = true ]; then
         show_version
     fi
 
     # 如果没有指定任何操作，默认执行完整流程
-    if [ "$DOWNLOAD" = false ] && [ "$CONFIG" = false ] && [ "$BUILD" = false ]; then
+    if [ "${DOWNLOAD}" = false ] && [ "${CONFIG}" = false ] && [ "${BUILD}" = false ]; then
         DOWNLOAD=true
         CONFIG=true
         BUILD=true
@@ -154,7 +166,7 @@ create_dirs() {
 # 下载资源
 download_resources() {
     echo "==> 下载 QDK 2.5.0..."
-    if ! curl -L -o ${PROJECT_DIR}/qdk.deb ${QDK_URL}; then
+    if ! curl -L -o ${PROJECT_DIR}/qdk.deb "${QDK_URL}"; then
         echo "ERROR: 下载 QDK 失败，请检查网络连接或 URL 有效性。"
         exit 1
     fi
@@ -362,23 +374,23 @@ main() {
     echo "=== ZeroTier QPKG 构建脚本 ==="
     echo "目标版本: ${ZEROTIER_VERSION}"
     echo "步骤:"
-    echo "  - 下载资源: $([ "$DOWNLOAD" = true ] && echo "是" || echo "否")"
-    echo "  - 生成配置: $([ "$CONFIG" = true ] && echo "是" || echo "否")"
-    echo "  - 执行构建: $([ "$BUILD" = true ] && echo "是" || echo "否")"
+    echo "  - 下载资源: $([ "${DOWNLOAD}" = true ] && echo "是" || echo "否")"
+    echo "  - 生成配置: $([ "${CONFIG}" = true ] && echo "是" || echo "否")"
+    echo "  - 执行构建: $([ "${BUILD}" = true ] && echo "是" || echo "否")"
     echo "============================="
 
     # 执行下载
-    if [ "$DOWNLOAD" = true ]; then
+    if [ "${DOWNLOAD}" = true ]; then
         execute_download
     fi
 
     # 执行配置生成
-    if [ "$CONFIG" = true ]; then
+    if [ "${CONFIG}" = true ]; then
         execute_config
     fi
 
     # 执行构建
-    if [ "$BUILD" = true ]; then
+    if [ "${BUILD}" = true ]; then
         execute_build
     fi
 

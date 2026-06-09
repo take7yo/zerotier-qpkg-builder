@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # GitHub Actions 配置文件：ZeroTier QPKG 自动构建和发布
 #
 # 触发条件：
@@ -65,7 +67,7 @@ jobs:
         run: |
           echo "Building ZeroTier version: ${{ env.VERSION }}"
           # 传递版本号给构建脚本
-          bash build.sh ${{ env.VERSION }}
+          bash build.sh "${{ env.VERSION }}"
 
       - name: Release qpkg
         if: github.event_name == 'push'
